@@ -1,0 +1,14 @@
+1. Deriving accurate transaction results
+Exchange Rate:
+a) Uniswap library: Obtains (post fee?) exchange rate. Accuracy circumspect.
+b) Derived from subgraph json query. Does not include slippage, unable to calculate formualically
+
+Transaction Fees:
+a) Able to obtain empircally from recent ETH transactions using web3 library. However does not specifically apply to Uniswap smart contract execution costs
+b) Possible method: Obtain average fees from https://crypto.com/defi/dashboard/gas-fees This method gives the average past and not specific costs. 
+
+Algo Ideas:
+Feasability of arbitrage depends on transaction costs percentage. This flucuates over time depending on time of day, week, month etc. The larger the cost, the greater the spread between pairs because arbitrage is unprofitable. Possible analysis of costs over time to predict when pairs will spread.
+
+UNTOUCHED:
+System to handle distribution of capital among currencies. 
