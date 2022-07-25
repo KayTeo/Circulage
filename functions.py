@@ -4,8 +4,7 @@ from web3 import Web3, HTTPProvider
 import statistics
 from uniswap import Uniswap
 
-#Test
-#Add own info
+#WARNING: Private wallet info, added for testing, do not release
 metamaskaddress = "0xF1BC081d62009F4282B639caDa5BC59d3904e12A"
 privatekey = "41b9728fe2f9dcc925e7de5538ce503001c8f911c4d1f57223fccaa6616aa0bf"
 infuraurl = "https://mainnet.infura.io/v3/4035a313139b4ff2808f4d19c4b5ef61"
