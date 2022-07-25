@@ -1,10 +1,22 @@
+from requests import Session, TooManyRedirects
 import requests
 import threading
 from web3 import Web3, HTTPProvider
 import statistics
 from uniswap import Uniswap
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
+import time
 
+
+##########################
+##### Instantiators ######
+##########################
+
+uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
+web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=factoryABI)
+client = Client(transport = RequestsHTTPTransport( url = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2', verify=True, retries=3,))
 
 ###############################
 #####Connection Functions######
@@ -19,13 +31,13 @@ def uniswapGraphHTTP():
     return sample_transport
 
 def connectUni():
-    uniswap_wrapper = functions.Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
+    uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
 
     session = Session()
-    session.headers.update(coinheaders)
+    session.headers.update(vars.coinheaders)
 
     try:
-        response = session.get(coinurl, params = coinparam).json()
+        response = session.get(vars.coinurl, params = vars.coinparam).json()
         data = response['data']
         ethdata = data['ETH']
         pricedata = ethdata['quote']
@@ -100,7 +112,6 @@ def sqrtToPrice(value, denom = 0):
 
 def queryGraph1(query):
     #Note: pass parameter as separate input. If not, unacceptable recursion occurs
-    threading.Timer(5.0, queryGraph, (query,)).start()
     response = client.execute(query)
     pairs = []
     for i in response['pairs']:
@@ -137,6 +148,7 @@ def getLastTransaction(pair_id, number = 1):
     response = graph_query(query)
     return response;
 
+#sqrtprice = int(response['data']['pool']['sqrtPrice'])
 def getPool(token0, token1, pair_id):
     query = f'''
     {{
@@ -173,6 +185,8 @@ def getLatestBlockRewardFee(centile = 0):
     dictlist = w3.eth.fee_history(1, "latest", reward_percentiles=[centile])
     return dictlist['reward'][0]
 
+
+### Example Usage ###
 gas_prices = estimateGasTest()
 meangas = statistics.mean(gas_prices)
 mediangas = statistics.median(gas_prices)
@@ -182,10 +196,9 @@ print(mediangas/10**18)
 max_wait_seconds = 120
 print(getLatestBlockRewardFee(75))
 #print(w3.eth.estimate_gas({'to': '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8', 'from':w3.eth.coinbase, 'value': 12345}))
-uniswap_wrapper = Uniswap(metamaskaddress, privatekey, infuraurl, version = 3)
-web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=factoryABI)
-estimated_gas = web3_f.functions.withdraw(w3.toWei(0.1, "ether")).estimateGas()
-print(estimated_gas)
+
+#estimated_gas = web3_f.functions.withdraw(w3.toWei(0.1, "ether")).estimateGas()
+#print(estimated_gas)
 
 #data = getPool('eth', 'usdc', "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8")
 #raw_pair = float(data['data']['pool']['volumeToken0'])/ float(data['data']['pool']['volumeToken1'])
@@ -198,3 +211,5 @@ print(estimated_gas)
 #print(triCalcPercent(1.5028, 1/0.8678, 1/1.3021))
 
 #print(getLastTransaction('0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8'))
+
+#print(sqrtToPrice(sqrtprice, vars.coindecimals['eth'] - vars.coindecimals['usdc']))
