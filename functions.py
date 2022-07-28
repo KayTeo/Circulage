@@ -7,6 +7,7 @@ from uniswap import Uniswap
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 import time
+import variables as vars
 
 
 ##########################
@@ -15,7 +16,7 @@ import time
 
 uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
-web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=factoryABI)
+web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=vars.factoryABI)
 client = Client(transport = RequestsHTTPTransport( url = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2', verify=True, retries=3,))
 
 ###############################
@@ -185,16 +186,19 @@ def getLatestBlockRewardFee(centile = 0):
     dictlist = w3.eth.fee_history(1, "latest", reward_percentiles=[centile])
     return dictlist['reward'][0]
 
+#Get transaction recipet
+#web3.eth.getTransactionReceipt(transaction_hash)
+
 
 ### Example Usage ###
-gas_prices = estimateGasTest()
-meangas = statistics.mean(gas_prices)
-mediangas = statistics.median(gas_prices)
-print(meangas/10**9)
-print(mediangas/10**18)
-
-max_wait_seconds = 120
-print(getLatestBlockRewardFee(75))
+#gas_prices = estimateGasTest()
+#meangas = statistics.mean(gas_prices)
+#mediangas = statistics.median(gas_prices)
+#print(meangas/10**9)
+#print(mediangas/10**18)
+#print(w3.eth.getGasPrice())
+#max_wait_seconds = 120
+#print(getLatestBlockRewardFee(75))
 #print(w3.eth.estimate_gas({'to': '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8', 'from':w3.eth.coinbase, 'value': 12345}))
 
 #estimated_gas = web3_f.functions.withdraw(w3.toWei(0.1, "ether")).estimateGas()
