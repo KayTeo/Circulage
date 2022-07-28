@@ -4,6 +4,7 @@ import threading
 from web3 import Web3, HTTPProvider
 import statistics
 from uniswap import Uniswap
+from variables import *
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 import time
