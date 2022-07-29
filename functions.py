@@ -12,9 +12,9 @@ import time
 import variables as vars
 
 
-##########################
-##### Instantiators ######
-##########################
+###########################
+##### Instantiators #######
+###########################
 
 uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
