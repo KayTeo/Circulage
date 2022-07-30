@@ -20,6 +20,7 @@ uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl,
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
 web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=vars.factoryABI)
 client = Client(transport = RequestsHTTPTransport( url = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2', verify=True, retries=3,))
+etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
 
 ###############################
 #####Connection Functions######
@@ -187,6 +188,13 @@ def estimateGasTest():
 def getLatestBlockRewardFee(centile = 0):
     dictlist = w3.eth.fee_history(1, "latest", reward_percentiles=[centile])
     return dictlist['reward'][0]
+
+#Gets the ehterscan calculated gas fees. NOTE: This is the average on ETH and not specific to uniswap. Returns a dict with the following key-value pairs (with example data)
+#{'LastBlock': '15244511', 'SafeGasPrice': '28', 'ProposeGasPrice': '29', 'FastGasPrice': '30', 'suggestBaseFee': '27.954900621', 'gasUsedRatio': '0.999947884224388,0.999508399524786,0.999793598249169,0.657947983434502,0.183528466489892'}
+def etherscanPrice():
+    response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
+    return response.json()['result']
+
 
 #Get transaction recipet
 #web3.eth.getTransactionReceipt(transaction_hash)
