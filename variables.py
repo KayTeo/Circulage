@@ -15,6 +15,8 @@ coinparam = {
     'convert' : 'USD',
 }
 
+etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
+
 #ERC-20 tokens use floating point math. Reserve counts are stored as 
 addrbook = {
     "eth" : "0x0000000000000000000000000000000000000000",
