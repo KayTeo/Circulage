@@ -31,9 +31,25 @@ addrbook = {
     "badger" : "0x3472A5A71965499acd81997a54BBA8D852C6E53d",
 }
 
+#More expensive fee tiers are listed with their percentage appeneded at the end
+#Requires all lowercase to be used
+pairbook = {
+  "dai-usdc" : "0x5777d92f208679db4b9778590fa3cab3ac9e2168",
+  "dai-usdc-0.05%" : "0x6c6bc977e13df9b0de53b251522280bb72383700",
+  "usdc-eth-0.3%" : "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8",
+  "usdc-eth" : "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+  "wbtc-eth" : "0x4585fe77225b41b697c938b018e2ac67ac5a20c0",
+  "wbtc-eth-0.3%" : "0xcbcdf9626bc03e24f779434178a73a0b4bad62ed",
+  "eth-usdt" : "0x4e68ccd3e89f51c3074ca5072bbac773960dfa36",
+  "usdc-usdt" : "0x3416cf6c708da44db2624d63ea0aaef7113527c6",
+  "frax-usdc" : "0xc63b0708e2f7e69cb8a1df0e1389a98c35a76d52",
+  "usdc-usdm" : "0x8ee3cc8e29e72e03c4ab430d7b7e08549f0c71cc",
+}
+
 coindecimals = {
     "eth" : 18,
     "usdc" : 6,
+    "usdm" : 6,
     "bat" : 18,
     "dai" : 18,
     "weth" : 18,
@@ -42,6 +58,7 @@ coindecimals = {
     "paxg" : 18,
     "wbtc" : 8,
     "badger" : 18,
+    "frax" : 18,
 }
 
 eth_usdc_query = '''
