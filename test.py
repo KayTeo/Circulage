@@ -1,4 +1,4 @@
-import functions
+import functions as f
 import variables as vars
 
 #TO DO
@@ -8,3 +8,7 @@ import variables as vars
 #4. Get swap data?
 
 #sqrtPriceX96 = sqrt(price) * 2 ** 96
+
+
+
+

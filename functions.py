@@ -71,11 +71,12 @@ def triCalcPercent(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB):
 def calcPoolExchange(x, y, k, n):
     return y - k / (x + n)
 
-#This library always assumes the routing token1 -> (w)eth -> token2 for token -> token transactions (on Uniswap v2) and gets the prices directly
-# from the contract (we're not computing prices ourselves here, just asking the contract for the price given a route).
-#Different tokens have different decimals, e.g. 6 for USDC and 18 for WETH, leading one token of USDC being worth much more than one unit of WETH in raw data
-#Uniswap pairs are ordered so the currency with the lowest address comes
-
+#Use as such. The denomination value is the difference between the decimals of the base and quote currency. This is because currencies are stored in different decimal points for precision
+#print(sqrtToPrice(sqrprice, coindecimals['eth'] - coindecimals['usdc']))
+def sqrtToPrice(value, token0dec = 0, token1dec = 0):
+    value = int(value)
+    #return ((value ** 2) / (2**192)) / (10 ** (token0dec - token1dec))
+    return ((value ** 2) / (2**192)) / (10 ** (token1dec - token0dec))
 ###############################
 #####Price/Rate Functions######
 ###############################
@@ -84,6 +85,10 @@ def getInputPrice(token0, token1):
     adjusted_price = raw_price / 10** int(vars.addrdecimals[token1])
     return adjusted_price
 
+#This library always assumes the routing token1 -> (w)eth -> token2 for token -> token transactions (on Uniswap v2) and gets the prices directly
+# from the contract (we're not computing prices ourselves here, just asking the contract for the price given a route).
+#Different tokens have different decimals, e.g. 6 for USDC and 18 for WETH, leading one token of USDC being worth much more than one unit of WETH in raw data
+#Uniswap pairs are ordered so the currency with the lowest address comes
 def get_token_price_in_eth(self, owner, weth_address,token):
     weth_address = self.w3.toChecksumAddress(weth_address)#WETH
     erc20_weth = self.erc20_contract(weth_address)
@@ -110,9 +115,6 @@ def run_query(uri, query, statusCode = 200):
 def graph_query(query):
     return run_query("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", query)
 
-#raw values are in gwei or something that multiplies it by huge number
-def sqrtToPrice(value, denom = 0):
-    return ((value ** 2) / (2**192)) / (10 ** denom)
 
 def queryGraph1(query):
     #Note: pass parameter as separate input. If not, unacceptable recursion occurs
@@ -127,7 +129,6 @@ def queryGraph1(query):
 
     df = pd.DataFrame(pairs)
     print(df.head())
-
 
 #Put {{ to make { a literal
 def getLastTransaction(pair_id, number = 1):
@@ -153,7 +154,8 @@ def getLastTransaction(pair_id, number = 1):
     return response;
 
 #sqrtprice = int(response['data']['pool']['sqrtPrice'])
-def getPool(token0, token1, pair_id):
+#{'data': {'pool': {'token0': {'symbol': 'DAI'}, 'token1': {'symbol': 'USDC'}, 'tick': '-276324', 'feeTier': '100', 'sqrtPrice': '79229630437327735417221', 'liquidity': '5120286464337725966312757', 'volumeToken0': '9892392969.019477464883758349', 'volumeToken1': '9892527261.516269'}}}
+def getPool(pair_id):
     query = f'''
     {{
     pool(id: "{pair_id}") {{
@@ -175,6 +177,20 @@ def getPool(token0, token1, pair_id):
     response = graph_query(query)
     return response;
 
+#Example output
+#{'feeTier': '100', 'sqrtPrice': '79229631348333122472707'}
+def getPairPrice(pair_id):
+    query = f'''
+    {{
+    pool(id: "{pair_id}") {{
+    feeTier
+    sqrtPrice
+    }}
+    }}
+    '''
+    response = graph_query(query)
+    return response['data']['pool'];
+
 ###web3 Library Functions###
 def estimateGasTest():
     pending_transactions = w3.provider.make_request("parity_pendingTransactions", [])
@@ -189,16 +205,33 @@ def getLatestBlockRewardFee(centile = 0):
     dictlist = w3.eth.fee_history(1, "latest", reward_percentiles=[centile])
     return dictlist['reward'][0]
 
-#Gets the ehterscan calculated gas fees. NOTE: This is the average on ETH and not specific to uniswap. Returns a dict with the following key-value pairs (with example data)
+#Gets the average gas fees from etherscan in gwei. NOTE: This is the average on ETH and not specific to uniswap. Returns a dict with the following key-value pairs (with example data)
 #{'LastBlock': '15244511', 'SafeGasPrice': '28', 'ProposeGasPrice': '29', 'FastGasPrice': '30', 'suggestBaseFee': '27.954900621', 'gasUsedRatio': '0.999947884224388,0.999508399524786,0.999793598249169,0.657947983434502,0.183528466489892'}
 def etherscanPrice():
     response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
     return response.json()['result']
 
+#Divide fee by 10,000 to get percentage
+def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
+    pair_Graph = {}
+    for i in pairs:
+        res = getPairPrice(vars.pairbook[i])
+        #This cannot be efficient
+        #Splits the pair into the names of its currencies
+        coins = i.split('-', 1)
+        pair_Graph[i] = sqrtToPrice(res['sqrtPrice'], vars.coindecimals[coins[0]], vars.coindecimals[coins[1]])
+        #Adjust for Uniswap fee, but not transaction fee
+        pair_Graph[i] *= (1 - int(res['feeTier']) / 10000)
 
+    return pair_Graph
+
+#test_Graph = updateGraph()
+#print(test_Graph['dai-usdc'])
+#print(test_Graph['usdc-eth'])
+#print(test_Graph['usdc-usdt'])
 #Get transaction recipet
 #web3.eth.getTransactionReceipt(transaction_hash)
-
+#print(getPairPrice(vars.pairbook['dai-usdc']))
 
 ### Example Usage ###
 #gas_prices = estimateGasTest()
@@ -217,7 +250,7 @@ def etherscanPrice():
 #data = getPool('eth', 'usdc', "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8")
 #raw_pair = float(data['data']['pool']['volumeToken0'])/ float(data['data']['pool']['volumeToken1'])
 #sqrprice = float(data['data']['pool']['sqrtPrice'])
-#print(sqrtToPrice(sqrprice, coindecimals['eth'] - coindecimals['usdc']))
+
 #def get_pair(token0, token1):
 
 #print(calcPoolExchange(5734, 6379363, 5734*6379363, 1))
@@ -227,3 +260,16 @@ def etherscanPrice():
 #print(getLastTransaction('0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8'))
 
 #print(sqrtToPrice(sqrtprice, vars.coindecimals['eth'] - vars.coindecimals['usdc']))
+
+#dicte = getPairPrice("0x5777d92f208679db4b9778590fa3cab3ac9e2168")
+#print(dicte)
+#sqrprice = dicte['sqrtPrice']
+#print(sqrprice)
+#print(sqrtToPrice(sqrprice))
+#print(sqrtToPrice(sqrprice, vars.coindecimals['dai'], vars.coindecimals['usdc']))
+
+
+#dai-usdc denom 0 1.0000371826615529e-12
+#dai-usdc dai dec - usdc dec 1.0000371826615528e-24
+#usdc-eth usdc dec - eth dec 5.857938093575771e+22
+#usdc-usdt usdc dec - usdt dec 99.95942696264916
