@@ -1,5 +1,5 @@
 import functions as f
-import variables as vars
+import variables as v
 
 #TO DO
 #1. def function for pulling raw pair data

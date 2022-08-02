@@ -1,25 +1,22 @@
 from requests import Session, TooManyRedirects
 import requests
-import threading
-import pandas as pd
 from web3 import Web3, HTTPProvider
-import statistics
 from uniswap import Uniswap
-from variables import *
-from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 import time
-import variables as vars
+import variables as v
+
 
 
 ###########################
 ##### Instantiators #######
 ###########################
 
-uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
+
+
+uniswap_wrapper = Uniswap(v.metamaskaddress, v.privatekey, v.infuraurl, version = 3)
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
-web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=vars.factoryABI)
-client = Client(transport = RequestsHTTPTransport( url = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v2', verify=True, retries=3,))
+web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=v.factoryABI)
 etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
 
 ###############################
@@ -35,13 +32,13 @@ def uniswapGraphHTTP():
     return sample_transport
 
 def connectUni():
-    uniswap_wrapper = Uniswap(vars.metamaskaddress, vars.privatekey, vars.infuraurl, version = 3)
+    uniswap_wrapper = Uniswap(v.metamaskaddress, v.privatekey, v.infuraurl, version = 3)
 
     session = Session()
-    session.headers.update(vars.coinheaders)
+    session.headers.update(v.coinheaders)
 
     try:
-        response = session.get(vars.coinurl, params = vars.coinparam).json()
+        response = session.get(v.coinurl, params = v.coinparam).json()
         data = response['data']
         ethdata = data['ETH']
         pricedata = ethdata['quote']
@@ -81,8 +78,8 @@ def sqrtToPrice(value, token0dec = 0, token1dec = 0):
 #####Price/Rate Functions######
 ###############################
 def getInputPrice(token0, token1):
-    raw_price = uniswap_wrapper.get_price_input(vars.addrbook[token0], vars.addrbook[token1], 10 ** vars.addrdecimals[token0])
-    adjusted_price = raw_price / 10** int(vars.addrdecimals[token1])
+    raw_price = uniswap_wrapper.get_price_input(v.addrbook[token0], v.addrbook[token1], 10 ** v.addrdecimals[token0])
+    adjusted_price = raw_price / 10** int(v.addrdecimals[token1])
     return adjusted_price
 
 #This library always assumes the routing token1 -> (w)eth -> token2 for token -> token transactions (on Uniswap v2) and gets the prices directly
@@ -114,21 +111,6 @@ def run_query(uri, query, statusCode = 200):
 
 def graph_query(query):
     return run_query("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", query)
-
-
-def queryGraph1(query):
-    #Note: pass parameter as separate input. If not, unacceptable recursion occurs
-    response = client.execute(query)
-    pairs = []
-    for i in response['pairs']:
-        pairs.append([
-            i['token0']['symbol'],
-            i['token1']['symbol'],
-            i['volumeUSD']
-        ])
-
-    df = pd.DataFrame(pairs)
-    print(df.head())
 
 #Put {{ to make { a literal
 def getLastTransaction(pair_id, number = 1):
@@ -211,19 +193,30 @@ def etherscanPrice():
     response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
     return response.json()['result']
 
+class coinNode:
+    def __init__(self, edges, name):
+        #List of pairs indicating next currency and exchange rate
+        self.edges = edges
+        self.name = name
+    
+    def getName(self):
+        return self.name
+    def getEdges(self):
+        return self.edges
+
 #Divide fee by 10,000 to get percentage
 def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
     pair_Graph = {}
     for i in pairs:
-        res = getPairPrice(vars.pairbook[i])
+        res = getPairPrice(v.pairbook[i])
         #This cannot be efficient
         #Splits the pair into the names of its currencies
         coins = i.split('-', 1)
-        pair_Graph[i] = sqrtToPrice(res['sqrtPrice'], vars.coindecimals[coins[0]], vars.coindecimals[coins[1]])
+        pair_Graph[i] = sqrtToPrice(res['sqrtPrice'], v.coindecimals[coins[0]], v.coindecimals[coins[1]])
         #Adjust for Uniswap fee, but not transaction fee
         pair_Graph[i] *= (1 - int(res['feeTier']) / 10000)
-
     return pair_Graph
+
 
 #test_Graph = updateGraph()
 #print(test_Graph['dai-usdc'])
@@ -231,7 +224,7 @@ def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-u
 #print(test_Graph['usdc-usdt'])
 #Get transaction recipet
 #web3.eth.getTransactionReceipt(transaction_hash)
-#print(getPairPrice(vars.pairbook['dai-usdc']))
+#print(getPairPrice(v.pairbook['dai-usdc']))
 
 ### Example Usage ###
 #gas_prices = estimateGasTest()
@@ -259,17 +252,17 @@ def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-u
 
 #print(getLastTransaction('0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8'))
 
-#print(sqrtToPrice(sqrtprice, vars.coindecimals['eth'] - vars.coindecimals['usdc']))
+#print(sqrtToPrice(sqrtprice, v.coindecimals['eth'] - v.coindecimals['usdc']))
 
 #dicte = getPairPrice("0x5777d92f208679db4b9778590fa3cab3ac9e2168")
 #print(dicte)
 #sqrprice = dicte['sqrtPrice']
 #print(sqrprice)
 #print(sqrtToPrice(sqrprice))
-#print(sqrtToPrice(sqrprice, vars.coindecimals['dai'], vars.coindecimals['usdc']))
+#print(sqrtToPrice(sqrprice, v.coindecimals['dai'], v.coindecimals['usdc']))
 
 
 #dai-usdc denom 0 1.0000371826615529e-12
 #dai-usdc dai dec - usdc dec 1.0000371826615528e-24
 #usdc-eth usdc dec - eth dec 5.857938093575771e+22
-#usdc-usdt usdc dec - usdt dec 99.95942696264916
+#usdc-usdt usdc dec - usdt dec 99.95942696264916.ge
