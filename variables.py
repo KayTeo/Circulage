@@ -48,17 +48,29 @@ pairbook = {
 
 coindecimals = {
     "eth" : 18,
+    "ETH" : 18,
     "usdc" : 6,
+    "USDC" : 6,
     "usdm" : 6,
+    "USDM" : 6,
     "bat" : 18,
+    "BAT" : 18,
     "dai" : 18,
+    "DAI" : 18,
     "weth" : 18,
+    "WETH" : 18,
     "usdt" : 6,
+    "USDT" : 6,
     "uni" : 18,
+    "UNI" : 18,
     "paxg" : 18,
+    "PAXG" : 18,
     "wbtc" : 8,
+    "WBTC" : 8,
     "badger" : 18,
+    "BADGER" : 18,
     "frax" : 18,
+    "FRAX" : 18
 }
 
 eth_usdc_query = '''
