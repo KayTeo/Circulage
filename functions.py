@@ -159,6 +159,27 @@ def getPool(pair_id):
     response = graph_query(query)
     return response;
 
+#Input is the nth biggest pools by volume, sorted in descending order
+#Returns a list of dictionaries that has keys the same as the query request. dict example
+#{'token0': {'symbol': '100MD'}, 'token1': {'symbol': 'SHIB'}, 'feeTier': '3000', 'sqrtPrice': '27679464853141944727867160'}
+def getPoolFast(number = 10) -> list[dict]:
+    query = f'''
+    {{
+    pools(first: {number}, orderBy: volumeUSD, orderDirection: desc) {{
+    token0{{
+        symbol
+    }}
+    token1{{
+        symbol
+    }}
+    feeTier
+    sqrtPrice
+    }}
+    }}
+    '''
+    response = graph_query(query)
+    return response['data']['pools'];
+
 #Example output
 #{'feeTier': '100', 'sqrtPrice': '79229631348333122472707'}
 def getPairPrice(pair_id):
@@ -193,17 +214,6 @@ def etherscanPrice():
     response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
     return response.json()['result']
 
-class coinNode:
-    def __init__(self, edges, name):
-        #List of pairs indicating next currency and exchange rate
-        self.edges = edges
-        self.name = name
-    
-    def getName(self):
-        return self.name
-    def getEdges(self):
-        return self.edges
-
 #Divide fee by 10,000 to get percentage
 def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
     pair_Graph = {}
@@ -217,7 +227,46 @@ def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-u
         pair_Graph[i] *= (1 - int(res['feeTier']) / 10000)
     return pair_Graph
 
+def updatePriceGraph(coinslist = ['dai', 'usdc', 'wbtc', 'usdt', 'frax', 'usdm', 'eth'], pairslist = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
+    adj_Matrix = {}
+    pools = getPoolFast(5)
 
+    for pool in pools:
+        adj_Matrix[pool['token0']['symbol']] = {}
+        adj_Matrix[pool['token1']['symbol']] = {}
+
+    #Each element pool in pools is a pool stored as a dictionary containing the 2 token names, fee tier and price as raw sqrt form
+    for pool in pools:
+        #Create line in matrix for the base token
+        token0 = pool['token0']['symbol']
+        token1 = pool['token1']['symbol']
+        rate01 = ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token0], v.coindecimals[token1]) ) * (1 - int(pool['feeTier']) / 10000) 
+        adj_Matrix[token0][token1] = rate01
+        adj_Matrix[token1].update({ token0 : ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token1], v.coindecimals[token0]) ) * (1 - int(pool['feeTier']) / 10000) })
+
+    return adj_Matrix
+
+class coinNode:
+    def __init__(self, edges, name):
+        #List of pairs indicating next currency and exchange rate
+        self.edges = edges
+        self.name = name
+    
+    def getName(self):
+        return self.name
+    def getEdges(self):
+        return self.edges
+
+def updateNodes(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
+    node_Graph = {}
+    for i in pairs:
+        coins = i.split('-', 1)
+        node_Graph[coins[0]] = coinNode(pairs, coins[0]) 
+
+#print(updatePriceGraph())
+#arr = []
+#arr.append(coinNode([("dai", 1.05), ("usdc", 1.0321), ("usdt", 0.985)], "eth"))
+#print(arr[0].getEdges()[0][0])
 #test_Graph = updateGraph()
 #print(test_Graph['dai-usdc'])
 #print(test_Graph['usdc-eth'])
