@@ -1,3 +1,5 @@
+import json
+from numpy import Infinity
 from requests import Session, TooManyRedirects
 import requests
 from web3 import Web3, HTTPProvider
@@ -5,14 +7,13 @@ from uniswap import Uniswap
 from gql.transport.requests import RequestsHTTPTransport
 import time
 import variables as v
+import math
 
 
 
 ###########################
 ##### Instantiators #######
 ###########################
-
-
 
 uniswap_wrapper = Uniswap(v.metamaskaddress, v.privatekey, v.infuraurl, version = 3)
 w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
@@ -22,7 +23,7 @@ etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle
 ###############################
 #####Connection Functions######
 ###############################
-def uniswapGraphHTTP():
+def uniswapGraphHTTP() -> RequestsHTTPTransport:
     sample_transport = RequestsHTTPTransport(
     url = 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3',
     #
@@ -57,63 +58,53 @@ def connectUni():
 #Standardise by setting currency C as the base
 #Functions calculate absolute and percent disparity between indirect and direct currency pairs
 #A positive value indicates profit on path (trade CB -> BA -> AC), a negative indicates (trade CA -> AB -> AC)
-def triCalcAbsolute(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB):
+def triCalcAbsolute(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB) -> float:
     return BaseQuote_CB / BaseQuote_CA - BaseQuote_AB
 
-def triCalcPercent(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB):
+def triCalcPercent(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB) -> float:
     return triCalcAbsolute(BaseQuote_CA, BaseQuote_CB, BaseQuote_AB)/ BaseQuote_AB * 100
+    
+def triCalcMulti(AB, BC, CA):
+    return AB*BC*CA - 1
+
+def triCalcMultiPercent(AB, CB, CA):
+    return triCalcMulti(AB, CB, CA) * 100
 
 #Calculate amount of y received from exchanging n tokens of x
 #x is the given currency, y the received currency, k the constant of the pair, and n the number of token x to give
-def calcPoolExchange(x, y, k, n):
+def calcPoolExchange(x, y, k, n) -> float:
     return y - k / (x + n)
 
 #Use as such. The denomination value is the difference between the decimals of the base and quote currency. This is because currencies are stored in different decimal points for precision
 #print(sqrtToPrice(sqrprice, coindecimals['eth'] - coindecimals['usdc']))
-def sqrtToPrice(value, token0dec = 0, token1dec = 0):
+def sqrtToPrice(value, token0dec = 0, token1dec = 0) -> float:
     value = int(value)
     #return ((value ** 2) / (2**192)) / (10 ** (token0dec - token1dec))
     return ((value ** 2) / (2**192)) / (10 ** (token1dec - token0dec))
+
 ###############################
 #####Price/Rate Functions######
 ###############################
-def getInputPrice(token0, token1):
+def getInputPrice(token0, token1) -> float:
     raw_price = uniswap_wrapper.get_price_input(v.addrbook[token0], v.addrbook[token1], 10 ** v.addrdecimals[token0])
     adjusted_price = raw_price / 10** int(v.addrdecimals[token1])
     return adjusted_price
 
-#This library always assumes the routing token1 -> (w)eth -> token2 for token -> token transactions (on Uniswap v2) and gets the prices directly
-# from the contract (we're not computing prices ourselves here, just asking the contract for the price given a route).
-#Different tokens have different decimals, e.g. 6 for USDC and 18 for WETH, leading one token of USDC being worth much more than one unit of WETH in raw data
-#Uniswap pairs are ordered so the currency with the lowest address comes
-def get_token_price_in_eth(self, owner, weth_address,token):
-    weth_address = self.w3.toChecksumAddress(weth_address)#WETH
-    erc20_weth = self.erc20_contract(weth_address)
-    owner = self.w3.toChecksumAddress(owner)#Uni:Token input exchange ex: UniV2:DAI
-    weth_balance: int = erc20_weth.functions.balanceOf(owner).call()
-    weth_balance = float(self.w3.fromWei(weth_balance,'ether') )
-    print (f'WETH quantity in Uniswap Pool = {weth_balance}')
-    token_address = self.w3.toChecksumAddress(token) # Like DAI
-    erc20 = self.erc20_contract(token_address)
-    token_balance: int = erc20.functions.balanceOf(owner).call()
-    gwei = 1000000000
-    token_balance = float(token_balance / gwei)
-    print (f'Token balance in Uniswap Pool = {token_balance}')
-    return float(weth_balance/token_balance)  # price of token
-
 ###Subgraph Query Functions###
-def run_query(uri, query, statusCode = 200):
+#Runs a subgraph query for a subgraph uri and query
+def run_query(uri : str, query : str, statusCode = 200) -> json:
     request = requests.post(uri, json={'query': query})
     if request.status_code == statusCode:
         return request.json()
     else:
         raise Exception(f"Unexpected status code returned: {request.status_code}")
 
-def graph_query(query):
+#Runs an arbitrary subgraph query on the uniswap v3 subgraph
+def graph_query(query : str) -> json:
     return run_query("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", query)
 
 #Put {{ to make { a literal
-def getLastTransaction(pair_id, number = 1):
+def getLastTransaction(pair_id, number = 1) -> json:
     query = f'''
         {{
         swaps(first: {number},orderBy: timestamp, orderDirection: desc, where:
@@ -137,7 +128,7 @@ def getLastTransaction(pair_id, number = 1):
 
 #sqrtprice = int(response['data']['pool']['sqrtPrice'])
 #{'data': {'pool': {'token0': {'symbol': 'DAI'}, 'token1': {'symbol': 'USDC'}, 'tick': '-276324', 'feeTier': '100', 'sqrtPrice': '79229630437327735417221', 'liquidity': '5120286464337725966312757', 'volumeToken0': '9892392969.019477464883758349', 'volumeToken1': '9892527261.516269'}}}
-def getPool(pair_id):
+def getPool(pair_id) -> json:
     query = f'''
     {{
     pool(id: "{pair_id}") {{
@@ -182,7 +173,7 @@ def getPoolFast(number = 10) -> list[dict]:
 
 #Example output
 #{'feeTier': '100', 'sqrtPrice': '79229631348333122472707'}
-def getPairPrice(pair_id):
+def getPairPrice(pair_id) -> json:
     query = f'''
     {{
     pool(id: "{pair_id}") {{
@@ -210,7 +201,7 @@ def getLatestBlockRewardFee(centile = 0):
 
 #Gets the average gas fees from etherscan in gwei. NOTE: This is the average on ETH and not specific to uniswap. Returns a dict with the following key-value pairs (with example data)
 #{'LastBlock': '15244511', 'SafeGasPrice': '28', 'ProposeGasPrice': '29', 'FastGasPrice': '30', 'suggestBaseFee': '27.954900621', 'gasUsedRatio': '0.999947884224388,0.999508399524786,0.999793598249169,0.657947983434502,0.183528466489892'}
-def etherscanPrice():
+def etherscanPrice() ->  json:
     response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
     return response.json()['result']
 
@@ -227,9 +218,11 @@ def updateGraph(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-u
         pair_Graph[i] *= (1 - int(res['feeTier']) / 10000)
     return pair_Graph
 
-def updatePriceGraph(coinslist = ['dai', 'usdc', 'wbtc', 'usdt', 'frax', 'usdm', 'eth'], pairslist = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
+#Creates an adjacency matrix using dictonary
+#coinslist = ['dai', 'usdc', 'wbtc', 'usdt', 'frax', 'usdm', 'eth'], pairslist = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']
+def updatePriceGraph(numberOfPools = 10) -> dict[dict]:
     adj_Matrix = {}
-    pools = getPoolFast(5)
+    pools = getPoolFast(numberOfPools)
 
     for pool in pools:
         adj_Matrix[pool['token0']['symbol']] = {}
@@ -246,72 +239,101 @@ def updatePriceGraph(coinslist = ['dai', 'usdc', 'wbtc', 'usdt', 'frax', 'usdm',
 
     return adj_Matrix
 
-class coinNode:
-    def __init__(self, edges, name):
-        #List of pairs indicating next currency and exchange rate
-        self.edges = edges
-        self.name = name
+def log_Graph(pair_Graph: dict[dict]):
+    for key0 in pair_Graph.keys():
+        for key1 in pair_Graph[key0].keys():
+            pair_Graph[key0][key1] = -1 * math.log(pair_Graph[key0][key1])
+
+    return pair_Graph
+
+def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.5):
+    key_list = list(pair_Graph.keys())
     
-    def getName(self):
-        return self.name
-    def getEdges(self):
-        return self.edges
+    #Part of function to specify source currency
+    if(base == 'NIL'):
+        base = key_list[0]
 
-def updateNodes(pairs = ['dai-usdc', 'usdc-eth', 'wbtc-eth', 'eth-usdt', 'usdc-usdt', 'frax-usdc', 'usdc-usdm']):
-    node_Graph = {}
-    for i in pairs:
-        coins = i.split('-', 1)
-        node_Graph[coins[0]] = coinNode(pairs, coins[0]) 
+    for coinA in key_list:
+        for coinB in pair_Graph[coinA].keys():
+            for coinC in pair_Graph[coinB].keys():
+                if coinC in pair_Graph[coinA]:
+                    #AB, BC, CA
+                    difference = triCalcMultiPercent(pair_Graph[coinA][coinB], pair_Graph[coinB][coinC], pair_Graph[coinC][coinA])
 
-#print(updatePriceGraph())
-#arr = []
-#arr.append(coinNode([("dai", 1.05), ("usdc", 1.0321), ("usdt", 0.985)], "eth"))
-#print(arr[0].getEdges()[0][0])
-#test_Graph = updateGraph()
-#print(test_Graph['dai-usdc'])
-#print(test_Graph['usdc-eth'])
-#print(test_Graph['usdc-usdt'])
-#Get transaction recipet
-#web3.eth.getTransactionReceipt(transaction_hash)
-#print(getPairPrice(v.pairbook['dai-usdc']))
-
-### Example Usage ###
-#gas_prices = estimateGasTest()
-#meangas = statistics.mean(gas_prices)
-#mediangas = statistics.median(gas_prices)
-#print(meangas/10**9)
-#print(mediangas/10**18)
-#print(w3.eth.getGasPrice())
-#max_wait_seconds = 120
-#print(getLatestBlockRewardFee(75))
-#print(w3.eth.estimate_gas({'to': '0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8', 'from':w3.eth.coinbase, 'value': 12345}))
-
-#estimated_gas = web3_f.functions.withdraw(w3.toWei(0.1, "ether")).estimateGas()
-#print(estimated_gas)
-
-#data = getPool('eth', 'usdc', "0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8")
-#raw_pair = float(data['data']['pool']['volumeToken0'])/ float(data['data']['pool']['volumeToken1'])
-#sqrprice = float(data['data']['pool']['sqrtPrice'])
-
-#def get_pair(token0, token1):
-
-#print(calcPoolExchange(5734, 6379363, 5734*6379363, 1))
-#print(triCalcAbsolute(1.5028, 1/0.8678, 1/1.3021))
-#print(triCalcPercent(1.5028, 1/0.8678, 1/1.3021))
-
-#print(getLastTransaction('0x8ad599c3a0ff1de082011efddc58f1908eb6e6d8'))
-
-#print(sqrtToPrice(sqrtprice, v.coindecimals['eth'] - v.coindecimals['usdc']))
-
-#dicte = getPairPrice("0x5777d92f208679db4b9778590fa3cab3ac9e2168")
-#print(dicte)
-#sqrprice = dicte['sqrtPrice']
-#print(sqrprice)
-#print(sqrtToPrice(sqrprice))
-#print(sqrtToPrice(sqrprice, v.coindecimals['dai'], v.coindecimals['usdc']))
+                    if difference > margin:
+                        print("Arbitrage found with difference: " + str(difference))
+                        print("Rates are " + str(pair_Graph[coinA][coinB]) + " " + str(pair_Graph[coinB][coinC]) + " " + str(pair_Graph[coinC][coinA]))
+                        print("\n")
+                        return [coinA, coinB, coinC]
 
 
-#dai-usdc denom 0 1.0000371826615529e-12
-#dai-usdc dai dec - usdc dec 1.0000371826615528e-24
-#usdc-eth usdc dec - eth dec 5.857938093575771e+22
-#usdc-usdt usdc dec - usdt dec 99.95942696264916.ge
+#======= STILL IN TESTING ========#
+def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
+
+    #Generate traversal order with base currency at the start
+    key_list = list(pair_Graph.keys())
+    vertices = len(key_list)
+    
+    i = 0
+    prev = {}
+    while i < len(key_list):
+        prev[key_list[i]] = ""
+        if(key_list[i] == base_currency):
+            holder = key_list[0]
+            key_list[0] = key_list[i]
+            key_list[i] = holder
+        i += 1
+    prev[base_currency] = base_currency
+    #dictionary of int storing shortest known distance
+    min_distance = {}
+    #Initialise all distances from base currency to zero
+    for i in key_list:
+        min_distance[i] = Infinity
+    #Initialise the distance from the first element (key stored as first element in key_list) to 0
+    min_distance[key_list[0]] = 0
+
+    #dictionary of arrays, containing the shortest path to each array from the base currency
+    route_list = {}
+    for vertex0 in key_list:
+        route_list[vertex0] = [base_currency]
+
+
+
+    #Log the distances
+    pair_Graph = log_Graph(pair_Graph)
+    for x in range (vertices - 1):
+        for vertex0 in key_list:
+            for vertex1 in pair_Graph[vertex0].keys():
+                #print(pair_Graph[vertex0][vertex1])
+                #print(str(vertex0) + " " + str(min_distance[vertex0]) + " " + str(vertex1) + " " + str(min_distance[vertex1]) + " " + str(pair_Graph[vertex0][vertex1] + min_distance[vertex0]))
+                if(min_distance[vertex1] > pair_Graph[vertex0][vertex1] + min_distance[vertex0]): 
+                    min_distance[vertex1] = pair_Graph[vertex0][vertex1] + min_distance[vertex0]
+
+                    #Append vertex1 to vertex0's route and assign to vertex1
+                    #route_holder = route_list[vertex0].append(vertex1)
+                    #route_list[vertex1] = route_holder
+                    prev[vertex1] = vertex0
+
+    #Find negative weight cycles
+    print(min_distance)
+    for vertex0 in key_list:
+        for vertex1 in pair_Graph[vertex0].keys():
+
+            #Find if the shortest distance to vertex0 from base_currency is greater than if going from vertex0 to vertex1
+            if(min_distance[vertex1] > pair_Graph[vertex0][vertex1] + min_distance[vertex0]):
+                print("Arbitrage found")
+                vertex0copy = vertex0
+                coin_cycle = [vertex1, vertex0copy]
+                print(prev)
+                while prev[vertex0copy] not in coin_cycle:
+                    coin_cycle.append(prev[vertex0copy])
+                    vertex0copy = prev[vertex0copy]
+                coin_cycle.append(prev[vertex0copy])
+                print("->".join(p for p in coin_cycle[::-1]))
+                print("coin cycle is: " + str(coin_cycle) + "\n")
+
+#testgraph = {'USDC': {'WETH': 0.1, 'USDT': 0.9898178173753199, 'WBTC': 1.6}, 'WETH': {'USDC': 10, 'USDT': 1248.3625877632899, 'WBTC': 9.430370805533799e+20, 'DAI': 0.000392296883686367}, 'USDT': {'WETH': 1.2483625877632897e-21, 'USDC': 0.9898178173753199}, 'WBTC': {'WETH': 9.430370805533798, 'USDC': 16831.181464919468}, 'DAI': {'WETH': 0.000392296883686367}}
+#testgraph = {'EUR' : {'USD' : 1.111, 'GBP' : 1.2, 'JPY' : 995}, 'USD' : { 'GBP' : 0.909,  'EUR' : 0.9}, 'GBP' : { 'EUR' : 0.8333, 'USD' : 1.1, 'JPY' : 1000}, 'JPY' : {'EUR' : 0.001005, 'GBP' : 0.001}} 
+#testgraph = {'EUR' : {'USD' : 1.1586, 'GBP' : 1.4600}, 'USD' : { 'GBP' : 1.6939,  'EUR' : 0.8631106507854307}, 'GBP' : { 'EUR' : 0.68493, 'USD' : 0.59035}} 
+testgraph = updatePriceGraph()
+find_Arbitrage_Tri('WETH', testgraph)
