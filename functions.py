@@ -235,7 +235,8 @@ def updatePriceGraph(numberOfPools = 10) -> dict[dict]:
         token1 = pool['token1']['symbol']
         rate01 = ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token0], v.coindecimals[token1]) ) * (1 - int(pool['feeTier']) / 10000) 
         adj_Matrix[token0][token1] = rate01
-        adj_Matrix[token1].update({ token0 : ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token1], v.coindecimals[token0]) ) * (1 - int(pool['feeTier']) / 10000) })
+        #adj_Matrix[token1].update({ token0 : ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token1], v.coindecimals[token0]) ) * (1 - int(pool['feeTier']) / 10000) })
+        adj_Matrix[token1].update({ token0 : 1 / rate01 })
 
     return adj_Matrix
 
@@ -245,6 +246,8 @@ def log_Graph(pair_Graph: dict[dict]):
             pair_Graph[key0][key1] = -1 * math.log(pair_Graph[key0][key1])
 
     return pair_Graph
+
+#======= STILL IN TESTING ========#
 
 def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.5):
     key_list = list(pair_Graph.keys())
@@ -262,12 +265,12 @@ def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin 
 
                     if difference > margin:
                         print("Arbitrage found with difference: " + str(difference))
+                        print("Coins are " + str(coinA) + " -> " + coinB + " -> " + coinC)
                         print("Rates are " + str(pair_Graph[coinA][coinB]) + " " + str(pair_Graph[coinB][coinC]) + " " + str(pair_Graph[coinC][coinA]))
                         print("\n")
                         return [coinA, coinB, coinC]
 
 
-#======= STILL IN TESTING ========#
 def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
 
     #Generate traversal order with base currency at the start
@@ -336,4 +339,5 @@ def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
 #testgraph = {'EUR' : {'USD' : 1.111, 'GBP' : 1.2, 'JPY' : 995}, 'USD' : { 'GBP' : 0.909,  'EUR' : 0.9}, 'GBP' : { 'EUR' : 0.8333, 'USD' : 1.1, 'JPY' : 1000}, 'JPY' : {'EUR' : 0.001005, 'GBP' : 0.001}} 
 #testgraph = {'EUR' : {'USD' : 1.1586, 'GBP' : 1.4600}, 'USD' : { 'GBP' : 1.6939,  'EUR' : 0.8631106507854307}, 'GBP' : { 'EUR' : 0.68493, 'USD' : 0.59035}} 
 testgraph = updatePriceGraph()
+print(testgraph)
 find_Arbitrage_Tri('WETH', testgraph)

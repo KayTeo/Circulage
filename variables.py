@@ -17,7 +17,6 @@ coinparam = {
 
 etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
 
-#ERC-20 tokens use floating point math. Reserve counts are stored as 
 addrbook = {
     "eth" : "0x0000000000000000000000000000000000000000",
     "usdc" : "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -46,6 +45,7 @@ pairbook = {
   "usdc-usdm" : "0x8ee3cc8e29e72e03c4ab430d7b7e08549f0c71cc",
 }
 
+#ERC-20 tokens use floating point math. Reserve counts are stored as square roots with no decimals
 coindecimals = {
     "eth" : 18,
     "ETH" : 18,
