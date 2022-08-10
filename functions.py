@@ -234,9 +234,8 @@ def updatePriceGraph(numberOfPools = 10) -> dict[dict]:
         token0 = pool['token0']['symbol']
         token1 = pool['token1']['symbol']
         rate01 = ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token0], v.coindecimals[token1]) ) 
-        adj_Matrix[token0][token1] = rate01 * (1 - int(pool['feeTier']) / 10000) 
-        #adj_Matrix[token1].update({ token0 : ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token1], v.coindecimals[token0]) ) * (1 - int(pool['feeTier']) / 10000) })
-        adj_Matrix[token1].update({ token0 : ( 1 / rate01 ) * (1 - int(pool['feeTier']) / 10000) })
+        adj_Matrix[token0][token1] = rate01 * (1 - int(pool['feeTier']) / 1000000) 
+        adj_Matrix[token1].update({ token0 : ( 1 / rate01 ) * (1 - int(pool['feeTier']) / 1000000) })
 
     return adj_Matrix
 
@@ -249,7 +248,7 @@ def log_Graph(pair_Graph: dict[dict]):
 
 #======= STILL IN TESTING ========#
 
-def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.3):
+def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.5):
     key_list = list(pair_Graph.keys())
     
     #Part of function to specify source currency
@@ -261,14 +260,26 @@ def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin 
             for coinC in pair_Graph[coinB].keys():
                 if coinC in pair_Graph[coinA]:
                     #AB, BC, CA
+                    #Percentage gain + or loss - 
                     difference = triCalcMultiPercent(pair_Graph[coinA][coinB], pair_Graph[coinB][coinC], pair_Graph[coinC][coinA])
 
                     if difference > margin:
                         print("Arbitrage found with difference: " + str(difference))
-                        print("Coins are " + str(coinA) + " -> " + coinB + " -> " + coinC)
+                        print("Coins are " + str(coinA) + " -> " + coinB + " -> " + coinC + " -> " + coinA)
                         print("Rates are " + str(pair_Graph[coinA][coinB]) + " " + str(pair_Graph[coinB][coinC]) + " " + str(pair_Graph[coinC][coinA]))
                         print("\n")
                         return [coinA, coinB, coinC]
+                    
+                    #Implires arbitrage in opp direction
+                    elif difference < 0:
+                        print("Reverse arbitrage found with difference: " + str(difference))
+                        print("Coins are " + str(coinC) + " -> " + coinB + " -> " + coinA + " -> " + coinC)
+                        print("Rates are " + str(pair_Graph[coinC][coinB]) + " " + str(pair_Graph[coinB][coinA]) + " " + str(pair_Graph[coinA][coinC]))
+                        print("\n")
+                        return [coinA, coinB, coinC]
+
+                    else:
+                        print("No difference found, difference is: " + str(difference))
 
 
 def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
@@ -340,4 +351,4 @@ def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
 #testgraph = {'EUR' : {'USD' : 1.1586, 'GBP' : 1.4600}, 'USD' : { 'GBP' : 1.6939,  'EUR' : 0.8631106507854307}, 'GBP' : { 'EUR' : 0.68493, 'USD' : 0.59035}} 
 testgraph = updatePriceGraph()
 print(testgraph)
-find_Arbitrage_Tri('WETH', testgraph)
+find_Arbitrage_Tri('WETH', testgraph, margin = 0.4)
