@@ -233,10 +233,10 @@ def updatePriceGraph(numberOfPools = 10) -> dict[dict]:
         #Create line in matrix for the base token
         token0 = pool['token0']['symbol']
         token1 = pool['token1']['symbol']
-        rate01 = ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token0], v.coindecimals[token1]) ) * (1 - int(pool['feeTier']) / 10000) 
-        adj_Matrix[token0][token1] = rate01
+        rate01 = ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token0], v.coindecimals[token1]) ) 
+        adj_Matrix[token0][token1] = rate01 * (1 - int(pool['feeTier']) / 10000) 
         #adj_Matrix[token1].update({ token0 : ( sqrtToPrice(pool['sqrtPrice'], v.coindecimals[token1], v.coindecimals[token0]) ) * (1 - int(pool['feeTier']) / 10000) })
-        adj_Matrix[token1].update({ token0 : 1 / rate01 })
+        adj_Matrix[token1].update({ token0 : ( 1 / rate01 ) * (1 - int(pool['feeTier']) / 10000) })
 
     return adj_Matrix
 
@@ -249,7 +249,7 @@ def log_Graph(pair_Graph: dict[dict]):
 
 #======= STILL IN TESTING ========#
 
-def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.5):
+def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.3):
     key_list = list(pair_Graph.keys())
     
     #Part of function to specify source currency
