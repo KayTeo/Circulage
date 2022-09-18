@@ -1,21 +1,20 @@
 
 
 #WARNING: Private wallet info, added for testing, do not release
-metamaskaddress = "0xF1BC081d62009F4282B639caDa5BC59d3904e12A"
-privatekey = "41b9728fe2f9dcc925e7de5538ce503001c8f911c4d1f57223fccaa6616aa0bf"
-infuraurl = "https://mainnet.infura.io/v3/4035a313139b4ff2808f4d19c4b5ef61"
+metamaskaddress = 
+privatekey = 
+infuraurl = 
 coinheaders = {
     'Accepts' : 'application/json',
-    'X-CMC_PRO_API_KEY' : '2c234027-2f3e-4ca0-a8d0-1a1b36849365',
+    'X-CMC_PRO_API_KEY' : ,
 }
+etherscan_api = 
 
 coinurl = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest'
 coinparam = {
     'symbol' : 'ETH',
     'convert' : 'USD',
 }
-
-etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
 
 addrbook = {
     "eth" : "0x0000000000000000000000000000000000000000",
