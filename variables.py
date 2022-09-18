@@ -1,14 +1,14 @@
 
 
 #WARNING: Private wallet info, added for testing, do not release
-metamaskaddress = 
-privatekey = 
-infuraurl = 
+metamaskaddress = ""
+privatekey = ""
+infuraurl = ""
 coinheaders = {
     'Accepts' : 'application/json',
-    'X-CMC_PRO_API_KEY' : ,
+    'X-CMC_PRO_API_KEY' : "", 
 }
-etherscan_api = 
+etherscan_api = ""
 
 coinurl = 'https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest'
 coinparam = {

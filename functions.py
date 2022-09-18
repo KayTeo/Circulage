@@ -16,9 +16,9 @@ import math
 ###########################
 
 uniswap_wrapper = Uniswap(v.metamaskaddress, v.privatekey, v.infuraurl, version = 3)
-w3 = Web3(HTTPProvider("https://restless-delicate-lake.discover.quiknode.pro/1372d20d14a4f985176e424e61ad6df1e403f8a3/"))
+w3 = Web3(HTTPProvider(""))
 web3_f = w3.eth.contract(address=uniswap_wrapper.address, abi=v.factoryABI)
-etherscan_api = "https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD"
+etherscan_api = ""
 
 ###############################
 #####Connection Functions######
@@ -104,6 +104,7 @@ def graph_query(query : str) -> json:
     return run_query("https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3", query)
 
 #Put {{ to make { a literal
+#Returns most recent transaction of a pair
 def getLastTransaction(pair_id, number = 1) -> json:
     query = f'''
         {{
@@ -126,6 +127,7 @@ def getLastTransaction(pair_id, number = 1) -> json:
     response = graph_query(query)
     return response;
 
+#Returns certain pool information, including price and feeTier
 #sqrtprice = int(response['data']['pool']['sqrtPrice'])
 #{'data': {'pool': {'token0': {'symbol': 'DAI'}, 'token1': {'symbol': 'USDC'}, 'tick': '-276324', 'feeTier': '100', 'sqrtPrice': '79229630437327735417221', 'liquidity': '5120286464337725966312757', 'volumeToken0': '9892392969.019477464883758349', 'volumeToken1': '9892527261.516269'}}}
 def getPool(pair_id) -> json:
@@ -202,7 +204,7 @@ def getLatestBlockRewardFee(centile = 0):
 #Gets the average gas fees from etherscan in gwei. NOTE: This is the average on ETH and not specific to uniswap. Returns a dict with the following key-value pairs (with example data)
 #{'LastBlock': '15244511', 'SafeGasPrice': '28', 'ProposeGasPrice': '29', 'FastGasPrice': '30', 'suggestBaseFee': '27.954900621', 'gasUsedRatio': '0.999947884224388,0.999508399524786,0.999793598249169,0.657947983434502,0.183528466489892'}
 def etherscanPrice() ->  json:
-    response = requests.get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=B8MYXAN2HXFZYDYFK1MT8C9WJN4J77U4CD")
+    response = requests.get("")
     return response.json()['result']
 
 #Divide fee by 10,000 to get percentage
@@ -248,6 +250,7 @@ def log_Graph(pair_Graph: dict[dict]):
 
 #======= STILL IN TESTING ========#
 
+#Finds triangular arbitrage opportunities
 def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin : float = 0.5):
     key_list = list(pair_Graph.keys())
     
@@ -282,6 +285,7 @@ def find_Arbitrage_Tri(base : str = 'NIL', pair_Graph : dict[dict] = {}, margin 
                         print("No difference found, difference is: " + str(difference))
 
 
+#Finds path of abritrage that ends with starting currency
 def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
 
     #Generate traversal order with base currency at the start
@@ -310,8 +314,6 @@ def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
     route_list = {}
     for vertex0 in key_list:
         route_list[vertex0] = [base_currency]
-
-
 
     #Log the distances
     pair_Graph = log_Graph(pair_Graph)
@@ -346,9 +348,7 @@ def find_Arbitrage_Circular(base_currency : str, pair_Graph : dict[dict]):
                 print("->".join(p for p in coin_cycle[::-1]))
                 print("coin cycle is: " + str(coin_cycle) + "\n")
 
-#testgraph = {'USDC': {'WETH': 0.1, 'USDT': 0.9898178173753199, 'WBTC': 1.6}, 'WETH': {'USDC': 10, 'USDT': 1248.3625877632899, 'WBTC': 9.430370805533799e+20, 'DAI': 0.000392296883686367}, 'USDT': {'WETH': 1.2483625877632897e-21, 'USDC': 0.9898178173753199}, 'WBTC': {'WETH': 9.430370805533798, 'USDC': 16831.181464919468}, 'DAI': {'WETH': 0.000392296883686367}}
-#testgraph = {'EUR' : {'USD' : 1.111, 'GBP' : 1.2, 'JPY' : 995}, 'USD' : { 'GBP' : 0.909,  'EUR' : 0.9}, 'GBP' : { 'EUR' : 0.8333, 'USD' : 1.1, 'JPY' : 1000}, 'JPY' : {'EUR' : 0.001005, 'GBP' : 0.001}} 
-#testgraph = {'EUR' : {'USD' : 1.1586, 'GBP' : 1.4600}, 'USD' : { 'GBP' : 1.6939,  'EUR' : 0.8631106507854307}, 'GBP' : { 'EUR' : 0.68493, 'USD' : 0.59035}} 
-testgraph = updatePriceGraph()
-print(testgraph)
-find_Arbitrage_Tri('WETH', testgraph, margin = 0.4)
+def makeTrade(currency1: int, currency2: int, amount: int):
+    result = uniswap_wrapper.make_trade_output(currency1,currency2, amount)
+    print(result)
+
